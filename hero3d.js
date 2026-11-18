@@ -119,7 +119,7 @@ function init() {
   function resize() {
     const w = hero.clientWidth, h = hero.clientHeight;
     renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
-    root.position.x = w < 820 ? 0 : 2.6; root.position.y = w < 820 ? 1.6 : 0;
+    root.position.x = w < 820 ? 0 : 3.9; root.position.y = w < 820 ? 1.6 : 0; root.position.z = w < 820 ? -2 : -2.5;
     camera.position.z = w < 820 ? 13 : 11;
   }
   resize(); addEventListener("resize", resize);
