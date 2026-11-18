@@ -117,6 +117,13 @@
     }, { passive: true });
   }
 
+  /* ---------- antes/depois (residencial) ---------- */
+  var ba = $("#ba");
+  if (ba) {
+    var rng = $("input", ba);
+    rng.addEventListener("input", function () { ba.style.setProperty("--pos", rng.value + "%"); });
+  }
+
   /* ---------- ano ---------- */
   var ano = $("#ano"); if (ano) ano.textContent = new Date().getFullYear();
 
@@ -138,11 +145,12 @@
     setTimeout(function () { t.remove(); add(html, "bot"); }, reduce ? 0 : (delay || 650));
   }
   function waBtn(msg, label, lead) {
-    return '<a class="btn btn-wa" href="' + waUrl(msg) + '" target="_blank" rel="noopener" data-chatwa="' + (lead ? "lead" : "contact") + '"><svg class="ico"><use href="#i-wa"/></svg>' + (label || "Continuar no WhatsApp") + "</a>";
+    var nm = lead && flow ? ' data-svcname="' + esc(flow.svc) + '" data-kind="' + flow.kind + '"' : "";
+    return '<a class="btn btn-wa" href="' + waUrl(msg) + '" target="_blank" rel="noopener" data-chatwa="' + (lead ? "lead" : "contact") + '"' + nm + '><svg class="ico"><use href="#i-wa"/></svg>' + (label || "Continuar no WhatsApp") + "</a>";
   }
   body.addEventListener("click", function (e) {
     var a = e.target.closest("a[data-chatwa]"); if (!a) return;
-    track("track", a.getAttribute("data-chatwa") === "lead" ? "Lead" : "Contact", { content_name: flow && flow.svc ? flow.svc : "Chat", content_category: "Chat" });
+    track("track", a.getAttribute("data-chatwa") === "lead" ? "Lead" : "Contact", { content_name: a.getAttribute("data-svcname") || "Chat", content_category: a.getAttribute("data-kind") || "Chat" });
   });
   function chips(list) {
     quick.innerHTML = "";
@@ -152,32 +160,69 @@
       quick.appendChild(b);
     });
   }
-  var MAIN = [
+  var MODE = document.body.getAttribute("data-mode") === "casa" ? "casa" : "carro";
+  var RES_SERVICES = [
+    { name: "Controle solar", svc: "Película de controle solar" },
+    { name: "Privacidade / espelhada", svc: "Película espelhada / privacidade" },
+    { name: "Jateada / decorativa", svc: "Película jateada / decorativa" },
+    { name: "Segurança", svc: "Película de segurança" },
+    { name: "Proteção UV", svc: "Película com proteção UV" },
+    { name: "Comercial e fachadas", svc: "Película comercial / fachada" }
+  ];
+  var RES_SVCS = RES_SERVICES.map(function (r) { return r.svc; });
+  var RES_RE = /resid|janela|apartamento|\bapto\b|\bap\b|fachada|comerci|vitrine|sacada|varanda|escrit[oó]rio|porta de vidro|\bbox\b|divis[oó]ria|claraboia|empresa|im[oó]vel|minha casa|da casa|pra casa|para casa|sala|quarto/;
+  var CAR_RE = /\bcarro|ve[ií]culo|autom[oó]v|moto\b|caminhonete|picape|para-?brisa|volant/;
+
+  var MAIN = MODE === "casa" ? [
+    { label: "💬 Fazer orçamento", fn: function () { startFlow(null, false, "casa"); } },
+    { label: "Tipos de película", fn: function () { reply("servicos"); } },
+    { label: "Vão até o local?", fn: function () { reply("casa"); } },
+    { label: "Escurece a casa?", fn: function () { reply("escuro"); } },
+    { label: "Onde fica?", fn: function () { reply("local"); } },
+    { label: "🚗 Película para carro", fn: function () { reply("carro"); } },
+    { label: "Falar com atendente", fn: function () { reply("humano"); } }
+  ] : [
     { label: "💬 Fazer orçamento", fn: function () { startFlow(); } },
     { label: "Quais serviços?", fn: function () { reply("servicos"); } },
+    { label: "🏠 Película residencial", fn: function () { reply("resid"); } },
     { label: "Atendem em casa?", fn: function () { reply("casa"); } },
     { label: "Onde fica?", fn: function () { reply("local"); } },
     { label: "Película Windowblue", fn: function () { reply("pelicula"); } },
     { label: "Garantia", fn: function () { reply("garantia"); } },
     { label: "Falar com atendente", fn: function () { reply("humano"); } }
   ];
+  function listOf(arr) { return "<ul>" + arr.map(function (s) { return "<li>" + s.name + "</li>"; }).join("") + "</ul>"; }
+  var RES_MSG = "Olá! Vim pelo site da Master Soud e quero um orçamento de insulfilm residencial.";
 
   var R = {
-    oi: function () { return "Oi! 😄 Eu sou o assistente da <b>Master Soud</b>. Posso montar seu orçamento ou tirar dúvidas rápidas. O que você precisa?"; },
-    servicos: function () {
-      return "Fazemos <b>17 serviços</b>:<ul>" + SERVICES.map(function (s) { return "<li>" + s.name + "</li>"; }).join("") + "</ul>Quer orçar algum?";
-    },
-    casa: function () { return "Sim! 🏠 Fazemos <b>atendimento domiciliar</b> em Aparecida de Goiânia e região, com horário marcado. Me fala o serviço que já monto seu pedido."; },
+    oi: function () { return MODE === "casa"
+      ? "Oi! 😄 Eu sou o assistente da <b>Master Soud</b>. Posso montar seu orçamento de <b>película para casa ou empresa</b> ou tirar dúvidas rápidas. O que você precisa?"
+      : "Oi! 😄 Eu sou o assistente da <b>Master Soud</b>. Posso montar seu orçamento ou tirar dúvidas rápidas, para o <b>carro</b> ou para a <b>sua casa</b>. O que você precisa?"; },
+    servicos: function () { return MODE === "casa"
+      ? "Para casas e empresas temos estes tipos de película:" + listOf(RES_SERVICES) + "Aplicamos em janelas, portas de vidro, sacadas, box, divisórias, vitrines e fachadas. Quer orçar?"
+      : "Para o carro fazemos <b>17 serviços</b>:" + listOf(SERVICES) + "E também <b>insulfilm residencial e comercial</b> 🏠. Quer orçar algum?"; },
+    casa: function () { return MODE === "casa"
+      ? "Sim! 🏠 Vamos até o local para <b>medir, mostrar as amostras e aplicar</b>, em Aparecida de Goiânia e região, com horário marcado."
+      : "Sim! 🏠 Fazemos <b>atendimento domiciliar</b> em Aparecida de Goiânia e região, com horário marcado. Me fala o serviço que já monto seu pedido."; },
     local: function () { return "📍 Ficamos na <b>Rua Jamunda com Itu, Vila Brasília</b>, Aparecida de Goiânia – GO (CEP 74905-430). Também vamos até você."; },
-    pelicula: function () { return "Somos <b>aplicadores autorizados Windowblue e Window Premium</b>. A Windowblue incolor no para-brisa tem bloqueio térmico de <b>90%</b> e de <b>80% dos raios UV</b>. Também temos a película profissional <b>G20</b>, com 4 anos de garantia. Quer um orçamento para o seu carro?"; },
-    garantia: function () { return "A garantia depende da película. A <b>G20</b> tem <b>4 anos de garantia</b>. Nas outras, a equipe te passa os detalhes no orçamento."; },
-    preco: function () { return "O valor depende do serviço e do modelo do carro. Vou montar seu pedido rapidinho pra equipe te passar o preço certinho. 👇"; },
-    horario: function () { return "Trabalhamos com <b>horário marcado</b>, na loja ou na sua casa. Chama no WhatsApp que a equipe vê o melhor horário pra você." + waBtn("Olá! Vim pelo site e quero agendar um horário.", "Agendar no WhatsApp"); },
+    pelicula: function () { return MODE === "casa"
+      ? "Trabalhamos com películas de <b>controle solar, privacidade (espelhada), jateada, segurança e proteção UV</b>, e somos aplicadores autorizados <b>Windowblue</b>. Levamos amostras para você escolher no seu vidro. Quer um orçamento?"
+      : "Somos <b>aplicadores autorizados Windowblue e Window Premium</b>. A Windowblue incolor no para-brisa tem bloqueio térmico de <b>90%</b> e de <b>80% dos raios UV</b>. Também temos a película profissional <b>G20</b>, com 4 anos de garantia. Quer um orçamento para o seu carro?"; },
+    garantia: function () { return MODE === "casa"
+      ? "A garantia depende da película escolhida. A equipe te passa os detalhes junto com o orçamento."
+      : "A garantia depende da película. A <b>G20</b> tem <b>4 anos de garantia</b>. Nas outras, a equipe te passa os detalhes no orçamento."; },
+    preco: function (k) { return (k || MODE) === "casa"
+      ? "O valor depende da <b>metragem dos vidros</b> e do tipo de película. Vou montar seu pedido pra equipe te passar uma estimativa. 👇"
+      : "O valor depende do serviço e do modelo do carro. Vou montar seu pedido rapidinho pra equipe te passar o preço certinho. 👇"; },
+    escuro: function () { return "Depende da película: tem opção <b>bem clara</b>, focada em calor e UV, e opções mais escuras ou espelhadas para privacidade. Levamos amostras pra você ver no seu vidro antes de decidir. 😉"; },
+    resid: function () { return "Sim! 🏠 Também aplicamos <b>insulfilm em casas, apartamentos e comércios</b>: controle solar, privacidade, jateado, segurança e proteção UV. <br><a href=\"residencial.html\" style=\"color:var(--brand2);text-decoration:underline\">Ver a página de residências</a>"; },
+    carro: function () { return "Fazemos sim! 🚗 Insulfilm Windowblue e Window Premium, capa de volante, som, multimídia, alarme, elétrica e mais. <br><a href=\"/\" style=\"color:var(--brand2);text-decoration:underline\">Ver a parte de veículos</a>"; },
+    horario: function () { return "Trabalhamos com <b>horário marcado</b>, na loja ou no local. Chama no WhatsApp que a equipe vê o melhor horário pra você." + waBtn("Olá! Vim pelo site e quero agendar um horário.", "Agendar no WhatsApp"); },
     pagamento: function () { return "As formas de pagamento são combinadas direto com a equipe no WhatsApp." + waBtn("Olá! Vim pelo site e queria saber as formas de pagamento.", "Perguntar no WhatsApp"); },
     volante: function () { return "Nossa <b>capa de volante é costurada à mão</b>: protege o volante original e recupera o que já está gasto. Quer ver os modelos pro seu carro?"; },
-    humano: function () { return "Claro! A equipe responde rapidinho no WhatsApp. 👇" + waBtn(C.whatsappDefaultMsg || "Olá! Vim pelo site.", "Falar com a equipe"); },
+    humano: function () { return "Claro! A equipe responde rapidinho no WhatsApp. 👇" + waBtn(MODE === "casa" ? RES_MSG : (C.whatsappDefaultMsg || "Olá! Vim pelo site."), "Falar com a equipe"); },
     obrigado: function () { return "Nada! Qualquer coisa é só chamar. 🤙"; },
-    fallback: function () { return "Hmm, essa eu não sei responder por aqui. 😅 Mas a equipe responde rapidinho no WhatsApp:" + waBtn(C.whatsappDefaultMsg || "Olá! Vim pelo site.", "Perguntar à equipe"); }
+    fallback: function () { return "Hmm, essa eu não sei responder por aqui. 😅 Mas a equipe responde rapidinho no WhatsApp:" + waBtn(MODE === "casa" ? RES_MSG : (C.whatsappDefaultMsg || "Olá! Vim pelo site."), "Perguntar à equipe"); }
   };
   var SVC_KEYS = [
     [/insul|pel[ií]cul|film|window|g20|escur|fum[eê]/, "Insulfilm"],
@@ -191,21 +236,35 @@
     [/sensor/, "Sensor de ré"],
     [/\bled\b|l[aâ]mpad|leed/, "Lâmpadas LED"],
     [/m[aá]quina|fechadura/, "Recuperação de máquina de vidro e fechadura"],
-    [/vidro/, "Instalação de vidro elétrico"],
+    [/vidro el|vidro/, "Instalação de vidro elétrico"],
     [/trava/, "Instalação de trava elétrica"],
     [/alarme/, "Instalação de alarme"],
     [/bloque|antifurto|furto|roubo/, "Bloqueador antifurto"],
     [/el[eé]tric|fia[cç]|pane|bateria/, "Elétrica automotiva em geral"],
     [/acess[oó]ri|instala/, "Montagem de acessórios"]
   ];
+  var RES_KEYS = [
+    [/solar|calor|quente|\bsol\b|claridade|ar.?condicionado/, "Película de controle solar"],
+    [/espelh|privac|ver de fora|vizinh|intimidade/, "Película espelhada / privacidade"],
+    [/jatead|fosc|decor|\bbox\b|divis[oó]ria|banheiro/, "Película jateada / decorativa"],
+    [/segur|estilha|quebr|anti.?vand/, "Película de segurança"],
+    [/\buv\b|desbot|m[oó]ve|piso|cortina/, "Película com proteção UV"],
+    [/comerci|fachad|vitrine|escrit|loja|empresa|consult/, "Película comercial / fachada"]
+  ];
   function norm(t) { return (t || "").toLowerCase(); }
-  function findSvc(t) { for (var i = 0; i < SVC_KEYS.length; i++) if (SVC_KEYS[i][0].test(t)) return SVC_KEYS[i][1]; return null; }
+  function findIn(keys, t) { for (var i = 0; i < keys.length; i++) if (keys[i][0].test(t)) return keys[i][1]; return null; }
+  function findSvc(t, kind) { return (kind || MODE) === "casa" ? findIn(RES_KEYS, t) : findIn(SVC_KEYS, t); }
 
   function reply(key) { bot(R[key]()); afterReply(key); }
   function afterReply(key) {
-    if (["pelicula", "volante", "casa", "preco", "garantia", "servicos"].indexOf(key) > -1) {
-      setTimeout(function () { chips([{ label: "💬 Sim, fazer orçamento", fn: function () { startFlow(key === "pelicula" || key === "garantia" ? "Insulfilm" : key === "volante" ? "Capa de volante costurada à mão" : null); } }].concat(MAIN.slice(1))); }, 700);
-    } else chips(MAIN);
+    var orc = { label: "💬 Sim, fazer orçamento", fn: null };
+    if (key === "resid") { orc.label = "💬 Orçar película residencial"; orc.fn = function () { startFlow(null, false, "casa"); }; }
+    else if (key === "carro") { orc.label = "💬 Orçar para o carro"; orc.fn = function () { startFlow(null, false, "carro"); }; }
+    else if (["pelicula", "volante", "casa", "preco", "garantia", "servicos", "escuro"].indexOf(key) > -1) {
+      orc.fn = function () { startFlow(MODE === "casa" ? null : (key === "pelicula" || key === "garantia" ? "Insulfilm" : key === "volante" ? "Capa de volante costurada à mão" : null)); };
+    }
+    if (orc.fn) setTimeout(function () { chips([orc].concat(MAIN.slice(1))); }, 700);
+    else chips(MAIN);
   }
 
   function answer(text) {
@@ -214,45 +273,73 @@
     if (/^(oi|ol[aá]|e a[ií]|opa|bom dia|boa tarde|boa noite|salve)\b/.test(t) && t.length < 25) return reply("oi");
     if (/obrigad|valeu|vlw|tmj/.test(t)) return reply("obrigado");
     if (/atendente|humano|pessoa|falar com|whats|zap/.test(t)) return reply("humano");
-    if (/pre[cç]o|valor|quanto|custa|or[cç]a/.test(t)) { var s = findSvc(t); bot(R.preco()); return setTimeout(function () { startFlow(s, true); }, 700); }
-    if (/casa|domic|busca|vem at|vai at|vcs v[aã]o|voc[eê]s v[aã]o/.test(t)) return reply("casa");
-    if (/onde|endere|local|fica|mapa|localiza/.test(t)) return reply("local");
+    var wantsRes = RES_RE.test(t) && !CAR_RE.test(t);
+    var wantsCar = CAR_RE.test(t) && !RES_RE.test(t);
+    if (/pre[cç]o|valor|quanto|custa|or[cç]a/.test(t)) {
+      var kind = wantsRes ? "casa" : wantsCar ? "carro" : MODE;
+      var s = findSvc(t, kind) || (kind === "casa" ? "Insulfilm residencial (tipo a definir)" : null); bot(R.preco(kind)); return setTimeout(function () { startFlow(s, true, kind); }, 700);
+    }
+    if (MODE === "carro" && wantsRes) return reply("resid");
+    if (MODE === "casa" && wantsCar) return reply("carro");
+    if (MODE === "casa" ? /domic|vem at|vai at|v[aã]o at|visita|medi[cç]|no local/.test(t) : /casa|domic|busca|vem at|vai at|vcs v[aã]o|voc[eê]s v[aã]o/.test(t)) return reply("casa");
+    if (/onde|endere|localiza|fica\b|mapa/.test(t)) return reply("local");
     if (/hor[aá]rio|abre|fecha|funciona|agenda|hoje|amanh|s[aá]bado|domingo/.test(t)) return reply("horario");
     if (/garant/.test(t)) return reply("garantia");
     if (/pix|cart[aã]o|parcel|pagamento|pagar|dinheiro/.test(t)) return reply("pagamento");
-    if (/servi[cç]o|o que (voc[eê]s )?faz|fazem o qu|trabalham com/.test(t)) return reply("servicos");
-    if (/volant|capa/.test(t)) return reply("volante");
-    if (/insul|pel[ií]cul|film|window|g20|calor|\buv\b|escur/.test(t)) return reply("pelicula");
+    if (MODE === "casa" && /escur|escurece|transparen|claro/.test(t)) return reply("escuro");
+    if (/servi[cç]o|o que (voc[eê]s )?faz|fazem o qu|trabalham com|tipos? de/.test(t)) return reply("servicos");
+    if (MODE === "carro" && /volant|capa/.test(t)) return reply("volante");
     var svc = findSvc(t);
+    if (MODE === "casa" && svc) { bot("Temos sim: <b>" + svc + "</b>! ✅ Quer que eu monte seu pedido de orçamento?"); return chips([{ label: "💬 Sim, fazer orçamento", fn: function () { startFlow(svc, false, "casa"); } }].concat(MAIN.slice(1))); }
+    if (/insul|pel[ií]cul|film|window|g20|calor|\buv\b|escur/.test(t)) return reply("pelicula");
     if (svc) { bot("Sim, fazemos <b>" + svc + "</b>! ✅ Quer que eu monte seu pedido de orçamento?"); return chips([{ label: "💬 Sim, orçar " + svc.split(" ")[0].toLowerCase(), fn: function () { startFlow(svc); } }].concat(MAIN.slice(1))); }
     bot(R.fallback()); chips(MAIN);
   }
 
-  /* fluxo de orçamento: serviço -> carro -> onde -> nome -> WhatsApp */
-  function startFlow(svc, quiet) {
-    flow = { svc: svc || null, step: svc ? "car" : "svc" };
-    track("trackCustom", "ChatOrcamentoInicio", { content_name: svc || "" });
+  /* fluxo de orçamento: serviço -> carro/imóvel -> onde -> nome -> WhatsApp */
+  function startFlow(svc, quiet, kind) {
+    kind = kind || (svc && RES_SVCS.indexOf(svc) > -1 ? "casa" : MODE);
+    flow = { svc: svc || null, step: svc ? "car" : "svc", kind: kind };
+    track("trackCustom", "ChatOrcamentoInicio", { content_name: svc || "", content_category: kind });
     if (!svc) {
-      bot("Qual serviço você precisa? Pode tocar numa opção ou escrever. 👇");
-      chips(SERVICES.map(function (s) { return { label: s.name, fn: function () { flow.svc = s.svc; flow.step = "car"; askCar(); } }; }));
+      bot(kind === "casa" ? "Qual tipo de película você procura? Se não souber, tudo bem: toque em <b>Não sei ainda</b>. 👇" : "Qual serviço você precisa? Pode tocar numa opção ou escrever. 👇");
+      var list = kind === "casa" ? RES_SERVICES.concat([{ name: "Não sei ainda", svc: "Insulfilm residencial (quero ajuda para escolher)" }]) : SERVICES;
+      chips(list.map(function (s) { return { label: s.name, fn: function () { flow.svc = s.svc; flow.step = "car"; askCar(); } }; }));
     } else { if (!quiet) bot("Show! <b>" + svc + "</b> então."); askCar(); }
   }
-  function askCar() { setTimeout(function () { bot("Qual é o <b>modelo e o ano</b> do carro? (ex.: Onix 2020)"); quick.innerHTML = ""; input.focus({ preventScroll: true }); }, 300); }
+  function askCar() {
+    setTimeout(function () {
+      bot(flow.kind === "casa"
+        ? "Qual o <b>tipo de imóvel</b> e <b>quantos vidros</b>? (ex.: casa, 4 janelas e 1 porta de vidro) Se tiver as medidas, melhor ainda!"
+        : "Qual é o <b>modelo e o ano</b> do carro? (ex.: Onix 2020)");
+      quick.innerHTML = ""; input.focus({ preventScroll: true });
+    }, 300);
+  }
   function flowInput(text) {
-    if (flow.step === "svc") { var s = findSvc(norm(text)) || text; flow.svc = s; flow.step = "car"; return askCar(); }
+    if (flow.step === "svc") { flow.svc = findSvc(norm(text), flow.kind) || text; flow.step = "car"; return askCar(); }
     if (flow.step === "car") {
-      flow.car = text; flow.step = "where";
+      flow.car = text;
+      if (flow.kind === "casa") { flow.where = "no local (medição e aplicação)"; return askName(); }
+      flow.step = "where";
       bot("Perfeito. Prefere fazer <b>aqui na loja</b> ou <b>na sua casa</b>?");
       return chips([{ label: "Na loja", fn: function () { flow.where = "na loja"; askName(); } }, { label: "Na minha casa", fn: function () { flow.where = "em domicílio"; askName(); } }, { label: "Tanto faz", fn: function () { flow.where = "onde for melhor"; askName(); } }]);
     }
     if (flow.step === "where") { flow.where = text; return askName(); }
     if (flow.step === "name") { flow.name = text; return finish(); }
   }
-  function askName() { flow.step = "name"; bot("Pra finalizar: qual é o seu <b>nome</b>?"); chips([{ label: "Prefiro não dizer", fn: function () { flow.name = ""; finish(); } }]); }
+  function askName() {
+    flow.step = "name";
+    bot(flow.kind === "casa" ? "Anotado! Qual é o seu <b>nome</b> e o <b>bairro</b>?" : "Pra finalizar: qual é o seu <b>nome</b>?");
+    chips([{ label: "Prefiro não dizer", fn: function () { flow.name = ""; finish(); } }]);
+  }
   function finish() {
-    var msg = "Olá! Vim pelo site da Master Soud." + (flow.name ? " Meu nome é " + flow.name + "." : "") +
-      "\n\n*Orçamento*\n• Serviço: " + flow.svc + "\n• Carro: " + flow.car + "\n• Local: " + flow.where;
-    var summary = "Pronto" + (flow.name ? ", " + esc(flow.name) : "") + "! ✅ Seu pedido:<ul><li><b>" + esc(flow.svc) + "</b></li><li>" + esc(flow.car) + "</li><li>" + esc(flow.where) + "</li></ul>Toque abaixo pra enviar no WhatsApp. A equipe responde rapidinho." + waBtn(msg, "Enviar pedido no WhatsApp", true);
+    var casa = flow.kind === "casa";
+    var msg = "Olá! Vim pelo site da Master Soud." + (flow.name ? " Sou " + flow.name + "." : "") +
+      "\n\n*Orçamento " + (casa ? "residencial/comercial" : "automotivo") + "*\n• Serviço: " + flow.svc +
+      "\n• " + (casa ? "Imóvel/vidros: " : "Carro: ") + flow.car + "\n• Local: " + flow.where +
+      (casa ? "\n\n(Posso mandar fotos dos vidros por aqui.)" : "");
+    var summary = "Pronto" + (flow.name ? ", " + esc(flow.name.split(/[ ,]/)[0]) : "") + "! ✅ Seu pedido:<ul><li><b>" + esc(flow.svc) + "</b></li><li>" + esc(flow.car) + "</li><li>" + esc(flow.where) + "</li></ul>" +
+      (casa ? "Toque abaixo pra enviar no WhatsApp. Se puder, mande <b>fotos dos vidros</b> por lá. 📸" : "Toque abaixo pra enviar no WhatsApp. A equipe responde rapidinho.") + waBtn(msg, "Enviar pedido no WhatsApp", true);
     bot(summary, 900);
     var done = flow; flow = null;
     setTimeout(function () { chips(MAIN); }, 1000);
