@@ -28,5 +28,7 @@ window.SITE_CONFIG = {
 
   instagram: "https://www.instagram.com/master_soudd",
   youtube: "https://www.youtube.com/@master_soudd",
+  facebook: "https://www.facebook.com/profile.php?id=61596986270230",
+  tiktok: "https://www.tiktok.com/@master_soudd",
   endereco: "Rua Jamunda com Itu, Vila Brasília — Aparecida de Goiânia/GO, 74905-430"
 };

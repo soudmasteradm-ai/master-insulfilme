@@ -224,7 +224,8 @@ details p{color:var(--mute);padding:0 22px 20px}
 .foot a{color:var(--mute)}
 .foot a:hover{color:var(--brand2)}
 .foot .ico{width:22px;height:22px}
-.foot-in a + a{margin-left:-6px}
+.foot-soc{display:flex;gap:16px;align-items:center}
+@media (max-width:640px){.foot-in{flex-direction:column;align-items:flex-start;gap:14px}.foot p{flex:none}}
 
 /* ---------- dock: chat + whatsapp ---------- */
 .dock{position:fixed;right:18px;bottom:calc(18px + var(--safe-b));z-index:60;display:flex;flex-direction:column;align-items:flex-end;gap:12px;transition:bottom .3s}
