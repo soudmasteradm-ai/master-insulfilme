@@ -20,27 +20,41 @@
     pending = [];
   }
   var pending = [];
+  /* Google Analytics 4: nomes de evento equivalentes aos do Pixel */
+  var GA_MAP = { Contact: "generate_lead", Lead: "generate_lead", ViewContent: "view_services", ChatAberto: "chat_open", ChatOrcamentoInicio: "chat_quote_start" };
+  function ga(name, params) {
+    if (typeof window.gtag !== "function") return;
+    var p = params || {}, ev = GA_MAP[name] || name;
+    var gp = { page_type: document.body.getAttribute("data-mode") || "carro" };
+    if (p.content_name) gp.service = String(p.content_name).slice(0, 100);
+    if (name === "Contact") { gp.method = "whatsapp"; gp.lead_source = p.content_category === "Chat" ? "chat" : "botao"; }
+    if (name === "Lead") { gp.method = "whatsapp"; gp.lead_source = "chat_orcamento"; gp.lead_kind = p.content_category || ""; }
+    window.gtag("event", ev, gp);
+  }
   function track(type, name, params) {
     var args = [type, name, params || {}];
     if (window.fbq && pixelLoaded) window.fbq.apply(null, args); else pending.push(args);
-    if (window.dataLayer) window.dataLayer.push({ event: name, params: params || {} });
+    ga(name, params);
   }
   window.msTrack = track;
 
   /* consentimento LGPD */
   var consent = $("#consent");
   var choice = store("ms_consent");
-  if (C.metaPixelId) {
-    if (!C.requireConsent || choice === "yes") loadPixel();
+  function grantGoogle() {
+    if (typeof window.gtag === "function") window.gtag("consent", "update", { analytics_storage: "granted", ad_storage: "granted", ad_user_data: "granted", ad_personalization: "granted" });
+  }
+  if (C.metaPixelId || C.gaId) {
+    if (!C.requireConsent || choice === "yes") { loadPixel(); grantGoogle(); }
     else if (choice !== "no" && consent) { consent.hidden = false; document.body.classList.add("has-consent"); }
   }
-  function closeConsent(v) { store("ms_consent", v); consent.hidden = true; document.body.classList.remove("has-consent"); if (v === "yes") loadPixel(); }
+  function closeConsent(v) { store("ms_consent", v); consent.hidden = true; document.body.classList.remove("has-consent"); if (v === "yes") { loadPixel(); grantGoogle(); } }
   if (consent) {
     $("#consentYes").addEventListener("click", function () { closeConsent("yes"); });
     $("#consentNo").addEventListener("click", function () { closeConsent("no"); });
     $("#consentMore").addEventListener("click", function (e) { e.preventDefault(); alertless(); });
   }
-  function alertless() { openChat(); bot("Usamos o <b>Pixel da Meta</b> só para medir quantas pessoas chegam pelo Instagram/Facebook e melhorar os anúncios. Não coletamos seus dados de contato pelo site."); }
+  function alertless() { openChat(); bot("Usamos o <b>Google Analytics</b> e o <b>Pixel da Meta</b> só para entender quantas pessoas visitam o site, de onde vêm e melhorar os anúncios. Não coletamos seus dados de contato pelo site. Se recusar, nada disso usa cookies."); }
 
   /* ---------- WhatsApp ---------- */
   function waUrl(msg) { return "https://wa.me/" + WA + "?text=" + encodeURIComponent(msg); }
