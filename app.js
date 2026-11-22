@@ -21,7 +21,7 @@
   }
   var pending = [];
   /* Google Analytics 4: nomes de evento equivalentes aos do Pixel */
-  var GA_MAP = { Contact: "generate_lead", Lead: "generate_lead", ViewContent: "view_services", ChatAberto: "chat_open", ChatOrcamentoInicio: "chat_quote_start" };
+  var GA_MAP = { Contact: "generate_lead", Lead: "generate_lead", ViewContent: "view_services", ChatAberto: "chat_open", ChatOrcamentoInicio: "chat_quote_start", RedeSocial: "social_click" };
   function ga(name, params) {
     if (typeof window.gtag !== "function") return;
     var p = params || {}, ev = GA_MAP[name] || name;
@@ -37,6 +37,7 @@
     ga(name, params);
   }
   window.msTrack = track;
+  document.addEventListener("click", function (e) { var s = e.target.closest && e.target.closest("[data-social]"); if (s) track("trackCustom", "RedeSocial", { content_name: s.getAttribute("data-social") }); });
 
   /* consentimento LGPD */
   var consent = $("#consent");
