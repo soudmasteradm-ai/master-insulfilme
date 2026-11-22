@@ -13,7 +13,7 @@ window.SITE_CONFIG = {
   // 3. Envie este arquivo para o GitHub e publique no Render.
   // Eventos já configurados: PageView, ViewContent (serviços),
   // Contact (qualquer clique no WhatsApp) e Lead (orçamento pelo chat).
-  metaPixelId: "",
+  metaPixelId: "1704537661280460",
 
   // ---------------- GOOGLE ANALYTICS 4 ----------------
   // Propriedade "Site mastersoundofc.com.br" (conta soudmasteradm@gmail.com).
